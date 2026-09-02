@@ -19,7 +19,9 @@ enum { EXTRA_COUNT = 0 };
 listout(ORDER,
     "src/start.js",
     "src/shim.js",
+    "src/settings.js",
     "src/theme/theme-dom-patch.js",
+//    "src/theme/theme-var-bridge.js",
     "src/ext/ext-autoskip-explicit.js",
     "src/ext/ext-autoskip-video.js",
     "src/ext/ext-trashbin.js",
@@ -27,6 +29,7 @@ listout(ORDER,
     "src/ext/ext-keyboard-shortcut.js",
     "src/ext/ext-adblock.js",
     "src/ext/ext-shuffle-mode.js",
+    "src/ext/ext-shuffle-plus.js",
     "src/end.js",
     );
 

@@ -1,5 +1,6 @@
 .PHONY: build clean watch
 
+CC = clang
 build: tools/build
 	./tools/build
 

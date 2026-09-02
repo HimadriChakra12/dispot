@@ -13,8 +13,8 @@
 
 const SW_MAP = [
   // ── Now-playing bar ─────────────────────────────────────────────────────
-  ['[data-testid="now-playing-widget"]',                   "main-nowPlayingBar-nowPlayingBar"],
-  ['[data-testid="now-playing-bar"]',                      "main-nowPlayingBar-nowPlayingBar"],
+  ['[data-testid="now-playing-widget"]',                   "main-nowPlayingBar-nowPlayingBar main-nowPlayingBar-container"],
+  ['[data-testid="now-playing-bar"]',                      "main-nowPlayingBar-nowPlayingBar main-nowPlayingBar-container"],
   ['[data-testid="context-item-info-title"]',              "main-trackInfo-name"],
   ['[data-testid="context-item-info-artist"]',             "main-trackInfo-artists main-trackInfo-artist"],
   ['[data-testid="context-item-link"]',                    "main-trackInfo-container"],
@@ -47,21 +47,25 @@ const SW_MAP = [
   ['[data-testid="volume-bar"] input[type="range"]',       "volume-bar__slider"],
 
   // ── Navigation / sidebars ────────────────────────────────────────────────
-  ['nav[aria-label="Main"]',                               "Root__nav-bar main-navBar-navBar"],
+  ['nav[aria-label="Main"]',                               "Root__nav-bar main-navBar-navBar main-yourLibraryX-navItems"],
   ['[data-testid="global-nav-bar"]',                       "Root__globalNav main-globalNav"],
-  ['[data-testid="left-sidebar"]',                         "Root__nav-bar"],
+  ['[data-testid="left-sidebar"]',                         "Root__nav-bar main-yourLibraryX-entryPoints"],
+  ['[data-testid="left-sidebar-panel"]',                   "main-yourLibraryX-libraryContainer"],
   ['[aria-label="Your Library"]',                          "main-yourLibrary-library"],
 
   // Library nav links / items
   ['[data-testid="rootlist-item"]',                        "main-rootlist-rootlistItem"],
   ['[data-testid="rootlist-item"] a',                      "main-rootlist-rootlistItemLink"],
+  ['[data-testid="rootlist-item-link"]',                   "main-yourLibraryX-listItem"],
   ['[data-testid="rootlist-item"] img',                    "main-image-image main-rootlist-rootlistItemImage"],
 
-  // ── Top bar ──────────────────────────────────────────────────────────────
+  // ── Top bar / search ─────────────────────────────────────────────────────
   ['[data-testid="topbar-content-wrapper"]',               "main-topBar-topbarContentWrapper"],
   ['[data-testid="global-nav-bar"] header',                "main-topBar-header"],
   ['[data-testid="topbar-forward-button"]',                "main-topBar-forward"],
   ['[data-testid="topbar-back-button"]',                   "main-topBar-back"],
+  ['[data-testid="search-container"]',                     "x-searchInput-searchInputContainer main-globalNav-searchContainer"],
+  ['[data-testid="search-input"]',                         "x-searchInput-searchInputInput main-topBar-searchBar"],
 
   // ── Main view / content area ─────────────────────────────────────────────
   ['main[role="main"]',                                    "Root__main-view main-view-container"],
@@ -157,9 +161,57 @@ function swPatchBody() {
   }
 }
 
+// Some themes (e.g. spicetify's "text" theme) label each UI region with
+// injected CSS content (\"Nav\", \"Library\", \"Main\"...) via ::before rules
+// keyed off a `:has()` chain that only matches desktop's exact DOM nesting.
+// Rather than replicate that nesting here -- which would mean moving live
+// React-managed elements around and risking breaking React's own tracking
+// of them -- this recreates the same visual labels against our own stable
+// data-testid selectors directly. Uses --spice-header / --font-family-header
+// if a theme defines them, so it still matches whatever theme is loaded;
+// otherwise falls back to something reasonable.
+function swInjectSectionLabels() {
+  if (document.getElementById("spicetify-web-section-labels")) return;
+  const style = document.createElement("style");
+  style.id = "spicetify-web-section-labels";
+  style.textContent = `
+    [data-testid="global-nav-bar"],
+    [data-testid="left-sidebar"],
+    main[role="main"],
+    [data-testid="now-playing-widget"],
+    [data-testid="right-sidebar"] {
+      position: relative;
+    }
+    [data-testid="global-nav-bar"]::before,
+    [data-testid="left-sidebar"]::before,
+    main[role="main"]::before,
+    [data-testid="now-playing-widget"]::before,
+    [data-testid="right-sidebar"]::before {
+      position: absolute;
+      top: 0; left: 4px;
+      margin-top: -10px;
+      padding: 0 3px;
+      font-family: var(--font-family-header, inherit);
+      font-size: 11px;
+      color: var(--spice-header, var(--spice-subtext, #a7a7a7));
+      background: var(--spice-main, #121212);
+      z-index: 3;
+      pointer-events: none;
+    }
+    [data-testid="global-nav-bar"]::before      { content: "Nav"; }
+    [data-testid="left-sidebar"]::before        { content: "Library"; }
+    main[role="main"]::before                   { content: "Main"; }
+    [data-testid="now-playing-widget"]::before  { content: "Playing"; }
+    [data-testid="right-sidebar"]::before       { content: "Sidebar"; }
+  `;
+  document.head.appendChild(style);
+}
+
 Spicetify.Events.webpackLoaded.on(() => {
+  if (!DispotSettings.isEnabled("spicetify-theming", true)) return;
   swPatchBody();
   swPatchOnce(document);
+  swInjectSectionLabels();
 
   // React re-renders wipe manually-added classes constantly; keep re-stamping.
   // Throttled with rAF to avoid fighting React on every single mutation.
